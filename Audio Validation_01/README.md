@@ -1,141 +1,178 @@
-# 🚀 End-to-End Whisper Model Evaluation & Analysis Suite
 
-Welcome to the complete suite for evaluating, managing, and analyzing fine-tuned Persian Whisper ASR models. This project provides a set of powerful, interconnected scripts that cover the entire lifecycle of model analysis: from quantitative performance evaluation to interactive, qualitative exploration of results.
 
-This suite is composed of three main components:
-1.  **📊 The Evaluation Script**: Benchmarks your model's performance by calculating the Word Error Rate (WER) and generates a detailed results CSV.
-2.  **🚀 The LoRA Merger Script**: Merges PEFT LoRA adapters into the base model to create a standalone, deployment-ready model.
-3.  **🎧 The Interactive Dashboard**: A visually rich Streamlit application to explore the evaluation results, listen to audio, and perform in-depth error analysis.
+
+# 🎧 Whisper Evaluation Dashboard
+
+This project is an advanced, interactive dashboard built with **Streamlit** to analyze and evaluate the results of an Automatic Speech Recognition (ASR) model like **Whisper**. The dashboard allows users to visually inspect the model's performance, listen to audio samples, and compare predicted text against reference transcripts.
 
 ---
 
-## ✨ Core Features
+## ✨ Key Features
 
--   **End-to-End Workflow**: A seamless process from model evaluation to deep-dive analysis.
--   **Quantitative & Qualitative Analysis**: Get hard numbers (WER) and the tools to understand *why* the errors occur.
--   **Advanced UI/UX**: A stunning, custom-themed "cyberpunk" Streamlit dashboard for an immersive analysis experience.
--   **Modular & Configurable**: Each script is self-contained and can be easily configured through simple path and parameter changes.
--   **Efficient & Optimized**: Scripts leverage CUDA, float16 precision, and smart caching for high performance.
--   **Deployment Ready**: Includes tools to productionize your fine-tuned models by merging LoRA adapters.
+- **Modern UI (Cyberpunk Theme):** A sleek and engaging dark-themed interface with custom CSS for a unique user experience.
+- **Overall Statistics & Error Distribution:** Displays key metrics like the average **Word Error Rate (WER)** and a histogram of its distribution in the sidebar.
+- **Interactive Smart Filters:** Filter results by a specific WER range and sort the data by various columns.
+- **Integrated Audio Player:** Input the `original_index` of one or more samples to listen to the corresponding audio file.
+- **Detailed Comparison View:** Simultaneously view the model's predicted text and the original reference text for any audio sample.
+- **Quick Sample Selection:** Instantly view samples with the **lowest** and **highest** error rates to analyze the model's best and worst-performing cases.
+- **Performance-Optimized with Caching:** Uses Streamlit's `@st.cache_resource` and `@st.cache_data` decorators for faster data loading and a responsive app.
 
 ---
 
-## 📦 Prerequisites & Installation
+## 🛠️ Tech Stack
 
-Before you begin, ensure you have Python 3.8+ installed. All required libraries can be installed with a single command:
+- **Programming Language:** Python 3.8+
+- **Core Framework:** [Streamlit](https://streamlit.io/)
+- **Key Libraries:**
+  - `pandas`: For managing and processing tabular data (from the CSV file).
+  - `datasets` (from Hugging Face): For loading and handling the audio dataset.
+  - `plotly`: For creating beautiful and interactive charts.
+
+---
+
+## 🚀 Setup and Installation
+
+Follow these steps to run the project locally.
+
+### 1. Prerequisites
+
+- Python 3.8 or higher must be installed.
+- The `pip` package manager must be available.
+
+### 2. Install Libraries
+
+First, clone the project repository (or download the files). Then, navigate into the project directory and install the required libraries. It is highly recommended to do this within a virtual environment.
 
 ```bash
-pip install torch transformers datasets pandas tqdm evaluate scikit-learn peft accelerate streamlit plotly
+# Create a virtual environment (optional but recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install required libraries
+pip install streamlit pandas datasets plotly plotly-express
+````
+
+### 3. Prepare the Data
+
+This application requires two main data components:
+
+1. **Audio Dataset (Hugging Face Dataset):**
+
+   * The main dataset containing the audio files. In the code, this dataset is expected to be located at `CV-17-01/validated`.
+   * You must download this dataset and place it in the specified path beforehand.
+
+2. **Results File (CSV):**
+
+   * A CSV file containing the model's evaluation results. This file should include columns such as `original_index`, `wer_normalized`, `prediction_normalized`, and `reference_normalized`.
+   * In the code, this file is named `results_no_audio_preprocessing.csv` and is expected to be in the project's root directory.
+
+Your folder structure should look like this:
+
 ```
-*For GPU acceleration, ensure your PyTorch installation is compatible with your CUDA version.*
-
----
-
-## 📂 Project Workflow & Structure
-
-The components are designed to work together. The typical workflow is:
-
-1.  Use the **Evaluation Script** to test your model against a dataset. This produces the crucial `results.csv` file.
-2.  (Optional) If you used LoRA for training, use the **LoRA Merger Script** to create a standalone model for deployment.
-3.  Use the **Interactive Dashboard** with the `results.csv` and the original dataset to visually analyze the model's performance.
-
-Your recommended project directory should look like this:
-
-```
-your-project-folder/
-│
-├── 1_evaluate_model.py                 # The evaluation script
-├── 2_merge_lora_adapter.py             # The LoRA merging script
-├── 3_streamlit_dashboard.py            # The interactive dashboard script
-│
-├── results_model_v1.csv                # Example output CSV from evaluation
-│
-└── data/
-    └── your_hf_dataset/                # The Hugging Face dataset saved to disk
-        ├── dataset.arrow
+.
+├── streamlit_app.py
+├── results_no_audio_preprocessing.csv
+└── CV-17-01/
+    └── validated/
         ├── dataset_info.json
-        └── state.json
+        ├── state.json
+        └── ... (Other dataset files)
 ```
+
+### 4. Run the Application
+
+After installing the dependencies and preparing the data, run the app with the following command:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The application will automatically open in your web browser.
 
 ---
 
-##  komponent 1: 📊 Model Evaluation Script
+## ⚙️ Code Structure Explained
 
-This script automates the process of benchmarking a Whisper model. It transcribes a set of audio samples, compares the predictions to ground truth references, and calculates the Word Error Rate (WER).
+The `streamlit_app.py` script is organized into the following logical sections:
 
-### Configuration
-Modify the `Config` class inside the script (`1_evaluate_model.py`):
+### 1. Imports and Constants
+
+The script begins by importing the necessary libraries and defining constants for the dataset path (`DATASET_PATH`) and the results file path (`CSV_PATH`).
+
 ```python
-class Config:
-    MODEL_PATH = "/path/to/your/whisper_model/"
-    DATASET_NAME = "/path/to/your/hf_dataset_folder"
-    CSV_OUTPUT_PATH = "results_model_v1.csv"
-    NUM_SAMPLES = 3000
+import streamlit as st
+import pandas as pd
+from datasets import load_from_disk, Audio
+import plotly.express as px
+
+DATASET_PATH = "CV-17-01/validated"
+CSV_PATH = "results_no_audio_preprocessing.csv"
+TARGET_SR = 16000
 ```
 
-### Usage
-Execute the script from your terminal:
-```bash
-python 1_evaluate_model.py
+### 2. Custom CSS Styling
+
+A large block of CSS code is injected into the app using `st.markdown(..., unsafe_allow_html=True)`. This code overrides the default Streamlit styles to create the custom dark/cyberpunk theme. The CSS classes defined here are used later in HTML blocks to style the header, cards, buttons, and other elements.
+
+### 3. Data Loading Functions (with Caching)
+
+To prevent reloading data on every user interaction, Streamlit's caching mechanism is used:
+
+* `@st.cache_resource`: Used for loading heavy, unchanging resources like large datasets. It's used here to load the `full_dataset`.
+* `@st.cache_data`: Used for loading data that might be processed but whose final result is static, like reading a CSV file.
+
+```python
+@st.cache_resource
+def load_dataset():
+    # ...
+
+@st.cache_data
+def load_csv():
+    # ...
+
+with st.spinner('Loading dataset...'):
+    full_dataset = load_dataset()
+    df = load_csv()
 ```
 
-### Output
--   **Console Report**: A final summary with the mean WER is printed.
--   **CSV File**: A detailed `.csv` file (e.g., `results_model_v1.csv`) is generated, containing predictions, references, individual WER scores, and other metadata for each sample. This file is the primary input for the interactive dashboard.
+### 4. Sidebar
+
+The sidebar displays global information and controls:
+
+* **Overall statistics:** total samples and average WER are shown using `st.metric`.
+* **WER distribution:** A histogram of the WER distribution is generated with `plotly.express` and displayed using `st.plotly_chart`.
+
+### 5. Main Page
+
+#### Section 1: Filters and DataFrame Display
+
+* Streamlit widgets like `st.slider` and `st.selectbox` allow the user to filter the data by WER range and select a sort order.
+* Statistics for the filtered data are displayed in a styled card.
+* The filtered and sorted DataFrame is displayed using `st.dataframe`.
+
+#### Section 2: Audio Player by Index
+
+* An `st.text_input` widget prompts the user to enter one or more comma-separated indices (`original_index`).
+* When the button is clicked, the code processes the indices in a loop:
+
+  1. It retrieves the corresponding sample from `full_dataset` using the index (`full_dataset[idx]`).
+  2. It extracts the textual information (prediction and WER) from the `df`.
+  3. It displays the information in custom-styled cards (`sample-card`) and text blocks (`text-prediction`, `text-reference`).
+  4. The audio is played using `st.audio`.
+* This section includes error handling for invalid inputs.
+
+#### Section 3: Quick Selection by WER
+
+* This section allows users to quickly find samples with the lowest or highest WER.
+* Using `st.selectbox` and `st.number_input`, the user chooses the sort order (best/worst) and the number of samples to display.
+* Upon button click, the DataFrame is sorted by WER, and the top `n` samples are selected.
+* These samples are then displayed with their audio and text, similar to the previous section.
 
 ---
 
-## Component 2: 🚀 LoRA Adapter Merging Script
+## 🎨 Customization
 
-If you fine-tuned your model using LoRA, this script merges the lightweight adapter into the base model to create a single, portable, and deployment-ready model.
+* **Change Data Paths:** To use a different dataset or results file, simply update the `DATASET_PATH` and `CSV_PATH` constants at the top of the script.
+* **Modify Styles:** All CSS is located within the initial `st.markdown` block. You can easily change colors, fonts, and other styles there.
+* **Add New Charts:** You can extend the dashboard by adding more plots and visual analyses using Plotly and `st.plotly_chart`.
 
-### Configuration
-Set the following path variables at the top of the script (`2_merge_lora_adapter.py`):
-```python
-# Path to the base model
-merged_model_path = "/path/to/your/base_whisper_model/"
-
-# Path to the LoRA adapter checkpoint
-checkpoint_path = "/path/to/your/lora_adapter_checkpoint/"
-
-# Path to save the new, fully merged model
-final_output_dir = "/path/to/save/new_merged_model/"
-```
-
-### Usage
-Run the script from your terminal:
-```bash
-python 2_merge_lora_adapter.py
-```
-
-### Output
--   A new directory at `final_output_dir` containing the complete, merged model, including all necessary configuration and tokenizer files. The model is now ready for inference without the `peft` library.
-
----
-
-## Component 3: 🎧 Interactive Analysis Dashboard
-
-This Streamlit application is the centerpiece for qualitative analysis. It provides a powerful and beautiful interface to explore the data generated by the Evaluation Script.
-
-### File Requirements
-The dashboard requires two inputs to be present in your project directory:
-1.  **The Results CSV**: The `.csv` file generated by the evaluation script.
-2.  **The Dataset Directory**: The Hugging Face `datasets` directory that was used for the evaluation.
-
-Update the paths at the top of the script (`3_streamlit_dashboard.py`) to point to these files:
-```python
-DATASET_PATH = "data/your_hf_dataset"
-CSV_PATH = "results_model_v1.csv"
-```
-
-### Usage
-Launch the dashboard with the following command:
-```bash
-streamlit run 3_streamlit_dashboard.py
-```
-
-### Dashboard Guide
--   **Main View**: See overall statistics in the sidebar and a filterable table of all evaluation samples in the main area.
--   **Smart Filtering**: Use the WER slider and sorting options to quickly navigate the results.
--   **Audio Analysis**: Enter one or more sample `original_index` values from the table to listen to the audio, see the model's prediction, and compare it directly with the reference text.
--   **Quick Selection**: Automatically view the best-performing (lowest WER) or worst-performing (highest WER) samples to quickly identify model strengths and weaknesses.
