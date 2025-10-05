@@ -1,0 +1,6 @@
+streamlit
+pandas
+datasets
+plotly
+soundfile
+pyarrow
